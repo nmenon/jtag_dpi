@@ -17,28 +17,35 @@ VERILATOR_FILES:= \
 
 OUTPUT_BIN:= $(PROJECT_NAME)
 
-all: clean
+all: clean client_make
 	$(MAKE) -C . build_v
 	$(MAKE) -C . build_c
-	$(MAKE) -C . run
+	@echo "make run to test"
 ifneq ("$(TRACE)","")
-	$(MAKE) -C . view
+	@echo "make view to see results"
 endif
-
 
 build_v:
 	$(VERILATOR_EXE) $(VERILATOR_FLAGS) $(VERILATOR_FILES) -o $(OUTPUT_BIN)
 
-
 build_c:
 	make -j -C $(OUT)/ -f V$(PROJECT_NAME).mk
 
-run:
-	$(OUT)/$(OUTPUT_BIN)
+run: all
+	($(OUT)/$(OUTPUT_BIN) &)
+	sleep 5
+	client/test
 
-view:
+ifneq ("$(TRACE)","")
+view: run
 	gtkwave trace.vcd trace.sav
+endif
 
 clean:
 	rm -rf $(OUT) *.sav *.vcd
 
+client_make: client_clean
+	$(MAKE) -C client
+
+client_clean:
+	$(MAKE) -C client clean
