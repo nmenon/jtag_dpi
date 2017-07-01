@@ -1,3 +1,5 @@
+////   Copyright (C) 2017 Texas Instruments Incorporated - http://www.ti.com/ ////
+////   Nishanth Menon                                             ////
 
 #include <unistd.h>
 #include <stdio.h>

@@ -1,3 +1,6 @@
+////   Copyright (C) 2017 Texas Instruments Incorporated - http://www.ti.com/ ////
+////   Nishanth Menon                                             ////
+
 #include "Vjtag_dpi_remote_bit_bang.h"
 #include "verilated.h"
 #include "verilated_vcd_c.h"

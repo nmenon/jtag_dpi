@@ -1,3 +1,6 @@
+////   Copyright (C) 2017 Texas Instruments Incorporated - http://www.ti.com/ ////
+////   Nishanth Menon                                             ////
+
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -2,6 +2,8 @@
 ////                                                              ////
 ////  jtag_dpi.sv, former dbg_comm_vpi.v                          ////
 ////                                                              ////
+////   Copyright (C) 2017 Texas Instruments Incorporated - http://www.ti.com/ ////
+////   Nishanth Menon                                             ////
 ////                                                              ////
 ////  This file is part of the SoC/OpenRISC Development Interface ////
 ////  http://www.opencores.org/cores/DebugInterface/              ////
