@@ -122,6 +122,7 @@ static int client_recv(unsigned char *const jtag_tms,
 
 	dat |= 0x10;
 	ret = send(jp_client_p, &dat, 1, 0);
+	*jtag_new_data_available = 1;
 
 	return 0;
 }
@@ -177,15 +178,18 @@ int jtag_server_tick(unsigned char *const jtag_tms,
 		     unsigned char *const jtag_trst,
 		     unsigned char *const jtag_tdi,
 		     unsigned char *const jtag_new_data_available,
+		     unsigned char *const jtag_client_on,
 		     const unsigned char jtag_tdo)
 {
 
 	if (!jp_got_con) {
 		if (client_check_con()) {
 			*jtag_new_data_available = 0;
+			*jtag_client_on = jp_got_con;
 			return 0;
 		}
 	}
+	*jtag_client_on = jp_got_con;
 
 	return client_recv(jtag_tms, jtag_tck, jtag_trst, jtag_tdi,
 			   jtag_new_data_available, jtag_tdo);

@@ -62,12 +62,14 @@ module jtag_dpi
                                                output bit s_trst,
                                                output bit s_tdi,
                                                output bit s_new_data,
+                                               output bit client_con,
                                                input  bit i_tdo);
   reg       rx_jtag_tms;
   reg       rx_jtag_tck;
   reg       rx_jtag_trst;
   reg       rx_jtag_tdi;
   reg       rx_jtag_new_data_available;
+  reg       rx_jtag_client_connection_status;
 
   // Handle commands from the upper level
   initial
@@ -89,6 +91,7 @@ module jtag_dpi
       if ( 0 != jtag_server_tick(rx_jtag_tms, rx_jtag_tck,
                                  rx_jtag_trst, rx_jtag_tdi,
                                  rx_jtag_new_data_available,
+                                 rx_jtag_client_connection_status,
                                  jtag_tdo_i) )
 		  begin
         $display("Error receiving from the JTAG DPI module.");
