@@ -7,9 +7,11 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include  <string.h>
-//#include "svdpi.h"
-//#include "dpiheader.h"
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 uint8_t jp_waiting;
 uint8_t count_comp;
 uint8_t jp_got_con;
@@ -108,6 +110,8 @@ static int client_recv(unsigned char *const jtag_tms,
 				jp_waiting = 1;
 			}
 			return 0;
+		default:
+			return 1;
 		}
 	}
 
@@ -142,7 +146,7 @@ static int client_check_con()
 
 	if ((jp_client_p = accept(jp_server_p, NULL, NULL)) == -1) {
 		if (errno == EAGAIN)
-			return 0;
+			return 1;
 
 		fprintf(stderr, "Unable to accept connection: %s\n",
 			strerror(errno));
@@ -178,6 +182,7 @@ int jtag_server_tick(unsigned char *const jtag_tms,
 
 	if (!jp_got_con) {
 		if (client_check_con()) {
+			*jtag_new_data_available = 0;
 			return 0;
 		}
 	}
@@ -185,5 +190,8 @@ int jtag_server_tick(unsigned char *const jtag_tms,
 	return client_recv(jtag_tms, jtag_tck, jtag_trst, jtag_tdi,
 			   jtag_new_data_available, jtag_tdo);
 }
+#ifdef __cplusplus
+}
+#endif
 
 /* vim: set ai: ts=8 sw=8 noet: */

@@ -3,6 +3,9 @@ OUT=output
 
 DPI_MODULES=
 VERILATOR_FLAGS:=--cc -sv --exe -Wall -Wno-fatal -O3 --assert --Mdir $(OUT)
+ifneq ("$(TRACE)","")
+VERILATOR_FLAGS+=--trace
+endif
 VERILATOR_EXE ?= verilator
 
 PROJECT_NAME :=jtag_dpi
@@ -18,7 +21,9 @@ all: clean
 	$(MAKE) -C . build_v
 	$(MAKE) -C . build_c
 	$(MAKE) -C . run
+ifneq ("$(TRACE)","")
 	$(MAKE) -C . view
+endif
 
 
 build_v:
@@ -29,7 +34,7 @@ build_c:
 	make -j -C $(OUT)/ -f V$(PROJECT_NAME).mk
 
 run:
-	$(OUT)/V$(PROJECT_NAME)
+	$(OUT)/$(OUTPUT_BIN)
 
 view:
 	gtkwave trace.vcd trace.sav

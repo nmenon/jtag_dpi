@@ -43,7 +43,7 @@
 
 module jtag_dpi
 #(
-  parameter TCP_PORT      = 4567 // XXX: we must get rid of static assignment
+  parameter TCP_PORT      = 9000 // XXX: we must get rid of static assignment
 )
 (
   input     clk_i,
