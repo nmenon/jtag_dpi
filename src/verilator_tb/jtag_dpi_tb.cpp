@@ -10,7 +10,7 @@
 
 int main(int argc, char **argv, char **env)
 {
-	int i;
+	int i=0;
 	int clk;
 
 	Verilated::commandArgs(argc, argv);
@@ -21,6 +21,10 @@ int main(int argc, char **argv, char **env)
 	Verilated::traceEverOn(true);
 #if TRACE
 	VerilatedVcdC *tfp = new VerilatedVcdC;
+
+	tfp->spTrace()->set_time_unit("1ns");
+	tfp->spTrace()->set_time_resolution("1ps");
+
 	top->trace(tfp, 99);
 	tfp->open("trace.vcd");
 #endif
@@ -33,6 +37,7 @@ int main(int argc, char **argv, char **env)
 	top->jtag_tdi_o = 0;
 	top->jtag_tdo_i = 0;
 	for (;;) {
+		i++;
 		// dump variables into VCD file and toggle clock
 		for (clk = 0; clk < 2; clk++) {
 #if TRACE
