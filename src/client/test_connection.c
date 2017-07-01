@@ -7,6 +7,22 @@
 #include <unistd.h>
 #include <string.h>
 
+static char test_vectors[]= {
+	'B',
+	'b',
+	'0',
+	'1',
+	'2',
+	'3',
+	'4',
+	'5',
+	'6',
+	'r',
+	's',
+	't',
+	'u',
+	 0,
+};
 int main(int argc, char **argv)
 {
 	int sd;
@@ -21,6 +37,7 @@ int main(int argc, char **argv)
 	uint8_t data_tx, data_rx;
 	char tck, trstn, tdi, tms;
 	int idx = 0;
+	int i = 0;
 
 	sd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sd == -1) {
@@ -45,30 +62,37 @@ int main(int argc, char **argv)
 		printf("Host %s Port %d is open\n", hostname, port);
 	}
 
-	while (1) {
-		// TCK, TRST, TDI and TMS should twiggle in sequence?
-		data_tx = 1 << idx % 4;
-		if (send(sd, &data_tx, sizeof(data_tx), 0) < 0) {
-			printf("%d tx error\n", idx);
-		} else {
-			printf("%5d Tx: %02x OK\n", idx, data_tx);
+	for (i = 0; i < 10; i++ ) {
+		idx = 0;
+		while (test_vectors[idx]) {
+			data_tx = test_vectors[idx];
+			if (send(sd, &data_tx, sizeof(data_tx), 0) < 0) {
+				printf("%d tx error\n", idx);
+			} else {
+				printf("%5d Tx: %02x[%c] OK\n", idx, data_tx, data_tx);
+			}
+			idx++;
 		}
-		idx++;
-		if (recv(sd, &data_rx, sizeof(data_rx), 0) < 0) {
-			printf("Rx error\n");
-		} else {
-			printf("Rx: %02x OK\n", data_rx);
-		}
-		if (idx > 100)
-			break;
 	}
 
-	// Exit the sim..
-	data_tx = 0x83;
+	data_tx = 'R';
 	if (send(sd, &data_tx, sizeof(data_tx), 0) < 0) {
 		printf("%d tx error\n", idx);
 	} else {
-		printf("%5d Tx: %02x OK\n", idx, data_tx);
+		printf("%5d Tx: %02x[%c] OK\n", idx, data_tx, data_tx);
+	}
+	if (recv(sd, &data_rx, sizeof(data_rx), 0) < 0) {
+		printf("Rx error\n");
+	} else {
+		printf("Rx: %02x[%c] OK\n", data_rx, data_rx);
+	}
+
+	// Exit the sim..
+	data_tx = 'Q';
+	if (send(sd, &data_tx, sizeof(data_tx), 0) < 0) {
+		printf("%d tx error\n", idx);
+	} else {
+		printf("%5d Tx: %02x[%c] OK\n", idx, data_tx, data_tx);
 	}
 	close(sd);
 

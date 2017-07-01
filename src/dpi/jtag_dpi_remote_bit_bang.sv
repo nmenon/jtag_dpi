@@ -41,7 +41,7 @@
 ////                                                              ////
 //////////////////////////////////////////////////////////////////////
 
-module jtag_dpi
+module jtag_dpi_remote_bit_bang
 #(
   parameter TCP_PORT      = 9000 // XXX: we must get rid of static assignment
 )
@@ -52,28 +52,59 @@ module jtag_dpi
   output    jtag_tms_o,
   output    jtag_tck_o,
   output    jtag_trst_o,
+  output    jtag_srst_o,
   output    jtag_tdi_o,
-  input     jtag_tdo_i
+  input     jtag_tdo_i,
+
+  output    blink_o
   );
 
   import "DPI-C" function int jtag_server_init(input int port);
   import "DPI-C" function int jtag_server_tick(output bit s_tms,
                                                output bit s_tck,
                                                output bit s_trst,
+                                               output bit s_srst,
                                                output bit s_tdi,
-                                               output bit s_new_data,
+                                               output bit s_blink,
+                                               output bit s_new_b_data,
+                                               output bit s_new_wr_data,
+                                               output bit s_new_rst_data,
                                                output bit client_con,
                                                input  bit i_tdo);
   reg       rx_jtag_tms;
   reg       rx_jtag_tck;
   reg       rx_jtag_trst;
+  reg       rx_jtag_srst;
   reg       rx_jtag_tdi;
-  reg       rx_jtag_new_data_available;
+  reg       rx_jtag_blink;
+  reg       rx_jtag_new_b_data_available;
+  reg       rx_jtag_new_wr_data_available;
+  reg       rx_jtag_new_rst_data_available;
+  /* verilator lint_off UNUSED */
   reg       rx_jtag_client_connection_status;
+  /* verilator lint_off UNUSED */
 
   // Handle commands from the upper level
   initial
     begin
+
+    rx_jtag_client_connection_status = 0;
+    rx_jtag_new_b_data_available = 0;
+    rx_jtag_new_wr_data_available = 0;
+    rx_jtag_new_rst_data_available = 0;
+    rx_jtag_tms = 0;
+    rx_jtag_tck = 0;
+    rx_jtag_trst = 0;
+    rx_jtag_srst = 0;
+    rx_jtag_tdi = 0;
+    rx_jtag_blink = 0;
+    jtag_tms_o = 0;
+    jtag_tck_o = 0;
+    jtag_trst_o = 0;
+    jtag_srst_o = 0;
+    jtag_tdi_o = 0;
+    blink_o = 0;
+
     if (0 != jtag_server_init(TCP_PORT))
     begin
       $display("Error initiazing port");
@@ -89,25 +120,51 @@ module jtag_dpi
 		if (enable_i)
 		begin
       if ( 0 != jtag_server_tick(rx_jtag_tms, rx_jtag_tck,
-                                 rx_jtag_trst, rx_jtag_tdi,
-                                 rx_jtag_new_data_available,
+                                 rx_jtag_trst, rx_jtag_srst,
+                                 rx_jtag_tdi, rx_jtag_blink,
+                                 rx_jtag_new_b_data_available,
+                                 rx_jtag_new_wr_data_available,
+                                 rx_jtag_new_rst_data_available,
                                  rx_jtag_client_connection_status,
                                  jtag_tdo_i) )
 		  begin
-        $display("Error receiving from the JTAG DPI module.");
+        $display("Error recieved from the JTAG DPI module.");
         $finish;
 		  end
 
-		  if (rx_jtag_new_data_available)
+		  if (rx_jtag_new_b_data_available)
 			begin
-        $display( "Rx: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d.",
-				          rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst );
+	     blink_o  <= rx_jtag_blink;
+       /*
+       $display( "BL: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d. SRST: %0d Blink:%0d [%0d %0d %0d] [%0d %0d] [%0d]",
+				          rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst, rx_jtag_srst, rx_jtag_blink,
+                  jtag_tck_o, jtag_tms_o, jtag_tdi_o, jtag_trst_o, jtag_srst_o, blink_o);
+        */
+      end //rx_jtag_new_b_data_available
 
+		  if (rx_jtag_new_wr_data_available)
+			begin
 	     jtag_tms_o  <= rx_jtag_tms;
 	     jtag_tck_o  <= rx_jtag_tck;
-	     jtag_trst_o <= rx_jtag_trst;
 	     jtag_tdi_o  <= rx_jtag_tdi;
-      end //rx_jtag_new_data_available
+       /*
+       $display( "WR: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d. SRST: %0d Blink:%0d [%0d %0d %0d] [%0d %0d] [%0d]",
+				          rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst, rx_jtag_srst, rx_jtag_blink,
+                  jtag_tck_o, jtag_tms_o, jtag_tdi_o, jtag_trst_o, jtag_srst_o, blink_o);
+        */
+      end //rx_jtag_new_wr_data_available
+
+		  if (rx_jtag_new_rst_data_available)
+      begin
+        jtag_trst_o  <= rx_jtag_trst;
+        jtag_srst_o  <= rx_jtag_srst;
+        /*
+        $display( "RST: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d. SRST: %0d Blink:%0d [%0d %0d %0d] [%0d %0d] [%0d]",
+				          rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst, rx_jtag_srst, rx_jtag_blink,
+                  jtag_tck_o, jtag_tms_o, jtag_tdi_o, jtag_trst_o, jtag_srst_o, blink_o);
+        */
+      end //rx_jtag_new_rst_data_available
+
     end //enable_i
   end //clk_i
 

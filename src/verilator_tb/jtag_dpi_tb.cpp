@@ -1,4 +1,4 @@
-#include "Vjtag_dpi.h"
+#include "Vjtag_dpi_remote_bit_bang.h"
 #include "verilated.h"
 #include "verilated_vcd_c.h"
 
@@ -10,13 +10,13 @@
 
 int main(int argc, char **argv, char **env)
 {
-	int i=0;
+	int i = 0;
 	int clk;
 
 	Verilated::commandArgs(argc, argv);
 
 	// init top verilog instance
-	Vjtag_dpi *top = new Vjtag_dpi;
+	Vjtag_dpi_remote_bit_bang *top = new Vjtag_dpi_remote_bit_bang;
 	// init trace dump
 	Verilated::traceEverOn(true);
 #if TRACE
@@ -31,11 +31,7 @@ int main(int argc, char **argv, char **env)
 	// initialize simulation inputs
 	top->clk_i = 1;
 	top->enable_i = 1;
-	top->jtag_tms_o = 0;
-	top->jtag_tck_o = 0;
-	top->jtag_trst_o = 0;
-	top->jtag_tdi_o = 0;
-	top->jtag_tdo_i = 0;
+	top->jtag_tdo_i = 1;
 	for (;;) {
 		i++;
 		// dump variables into VCD file and toggle clock
@@ -47,7 +43,7 @@ int main(int argc, char **argv, char **env)
 			top->eval();
 		}
 		if (Verilated::gotFinish())
-			exit(0);
+			break;
 	}
 #if TRACE
 	tfp->close();

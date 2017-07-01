@@ -2,13 +2,13 @@
 OUT=output
 
 DPI_MODULES=
-VERILATOR_FLAGS:=--cc -sv --exe -Wall -Wno-fatal -O3 --assert --Mdir $(OUT)
+VERILATOR_FLAGS:=--cc -sv --exe -Wall -Wno-fatal -O3  --assert --Mdir $(OUT)
 ifneq ("$(TRACE)","")
 VERILATOR_FLAGS+=--trace
 endif
 VERILATOR_EXE ?= verilator
 
-PROJECT_NAME :=jtag_dpi
+PROJECT_NAME :=jtag_dpi_remote_bit_bang
 
 VERILATOR_FILES:= \
 		  dpi/$(PROJECT_NAME).sv\
