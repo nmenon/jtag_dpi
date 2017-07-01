@@ -165,9 +165,8 @@ extern "C" {
 		case RB_RST_U:
 			DEBUG_PRINT("RST %c\n", dat);
 			dat -= RB_RST_R;
-			/* TBD: srst */
+			*jtag_srst = (dat & 0x1) >> 0;
 			*jtag_trst = (dat & 0x2) >> 1;
-			*jtag_srst = (dat & 0x2) >> 1;
 			*rst_data_avail = 1;
 			break;
 
