@@ -43,75 +43,70 @@
 
 module jtag_dpi
 #(
-  parameter TCP_PORT      = 4567,
-  parameter TIMEOUT_COUNT = 6'h08 // 1/2 of a TCK clock will be this many clk_i ticks.  Must be less than 6 bits.
+  parameter TCP_PORT      = 4567 // XXX: we must get rid of static assignment
 )
 (
   input     clk_i,
   input     enable_i,
 
-  output    tms_o,
-  output    tck_o,
-  output    trst_o,
-  output    tdi_o,
-  input     tdo_i
+  output    jtag_tms_o,
+  output    jtag_tck_o,
+  output    jtag_trst_o,
+  output    jtag_tdi_o,
+  input     jtag_tdo_i
   );
 
-  import "DPI-C"         function void jtag_init(input int port);
-  import "DPI-C" context function int  jtag_recv(inout logic tck_o, inout logic trst_o, inout logic tdi_o, inout logic tms_o);
-  import "DPI-C"         function void jtag_timeout();
-
-  export "DPI-C" function rtl_get_tdo;
-
-
-  logic [5:0] clk_count = TIMEOUT_COUNT + 1;
-
-  logic tck;
-  logic trstn;
-  logic tdi;
-  logic tms;
-
-
-
-
-  function logic rtl_get_tdo();
-    return tdo_i;
-  endfunction
+  import "DPI-C" function int jtag_server_init(input int port);
+  import "DPI-C" function int jtag_server_tick(output bit s_tms,
+                                               output bit s_tck,
+                                               output bit s_trst,
+                                               output bit s_tdi,
+                                               output bit s_new_data,
+                                               input  bit i_tdo);
+  reg       rx_jtag_tms;
+  reg       rx_jtag_tck;
+  reg       rx_jtag_trst;
+  reg       rx_jtag_tdi;
+  reg       rx_jtag_new_data_available;
 
   // Handle commands from the upper level
   initial
-  begin
-    jtag_init(TCP_PORT);
-
-    // wait for enable before doing anything
-    @(posedge enable_i);
-
-    while(1)
     begin
-      @(posedge clk_i)
-      if(jtag_recv(tck, trstn, tdi, tms))
-      begin
-        clk_count = 'h0;  // Reset the timeout clock in case jp wants to wait for a timeout / half TCK period
-      end
+    if (0 != jtag_server_init(TCP_PORT))
+    begin
+      $display("Error initiazing port");
+      $finish;
     end
-  end
+    $display("port=%d", TCP_PORT);
 
-  // Send timeouts / wait periods to the upper layer
+	end
+
+	// On clk input, check if we are enabled first
   always @(posedge clk_i)
   begin
-    if(clk_count < TIMEOUT_COUNT)
-      clk_count = clk_count + 1;
-    else if(clk_count == TIMEOUT_COUNT)
-    begin
-      jtag_timeout();
-      clk_count = clk_count + 1;
-    end
-    // else it's already timed out, don't do anything
-  end
+		if (enable_i)
+		begin
+      if ( 0 != jtag_server_tick(rx_jtag_tms, rx_jtag_tck,
+                                 rx_jtag_trst, rx_jtag_tdi,
+                                 rx_jtag_new_data_available,
+                                 jtag_tdo_i) )
+		  begin
+        $display("Error receiving from the JTAG DPI module.");
+        $finish;
+		  end
 
-  assign tck_o  = tck;
-  assign trst_o = trstn;
-  assign tdi_o  = tdi;
-  assign tms_o  = tms;
+		  if (rx_jtag_new_data_available)
+			begin
+        $display( "Rx: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d.",
+				          rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst );
+
+	     jtag_tms_o  <= rx_jtag_tms;
+	     jtag_tck_o  <= rx_jtag_tck;
+	     jtag_trst_o <= rx_jtag_trst;
+	     jtag_tdi_o  <= rx_jtag_tdi;
+      end //rx_jtag_new_data_available
+    end //enable_i
+  end //clk_i
 
 endmodule
+// vim: set ai ts=2 sw=2 et:
