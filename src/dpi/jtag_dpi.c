@@ -1,3 +1,4 @@
+
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -6,8 +7,8 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include  <string.h>
-#include "dpiheader.h"
-
+//#include "svdpi.h"
+//#include "dpiheader.h"
 
 uint8_t jp_waiting;
 uint8_t count_comp;
@@ -67,11 +68,11 @@ static int server_socket_open()
 }
 
 static int client_recv(unsigned char *const jtag_tms,
-		unsigned char *const jtag_tck,
-		unsigned char *const jtag_trst,
-		unsigned char *const jtag_tdi,
-		unsigned char *const jtag_new_data_available,
-		const unsigned char jtag_tdo)
+		       unsigned char *const jtag_tck,
+		       unsigned char *const jtag_trst,
+		       unsigned char *const jtag_tdi,
+		       unsigned char *const jtag_new_data_available,
+		       const unsigned char jtag_tdo)
 {
 	uint8_t dat;
 	int ret;
@@ -160,19 +161,19 @@ static int client_check_con()
 	return 0;
 }
 
-int jtag_init(const int port)
+int jtag_server_init(const int port)
 {
 	socket_port = port;
 
 	return server_socket_open();
 }
 
-int jtag_dpi_tick(unsigned char *const jtag_tms,
-		  unsigned char *const jtag_tck,
-		  unsigned char *const jtag_trst,
-		  unsigned char *const jtag_tdi,
-		  unsigned char *const jtag_new_data_available,
-		  const unsigned char jtag_tdo)
+int jtag_server_tick(unsigned char *const jtag_tms,
+		     unsigned char *const jtag_tck,
+		     unsigned char *const jtag_trst,
+		     unsigned char *const jtag_tdi,
+		     unsigned char *const jtag_new_data_available,
+		     const unsigned char jtag_tdo)
 {
 
 	if (!jp_got_con) {
