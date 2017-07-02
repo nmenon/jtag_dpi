@@ -22,7 +22,7 @@ install off https://www.veripool.org/projects/verilator/wiki/Installing
 * if you are interested in viewing waveforms, sudo apt-get install gtkwave
 
 # Build and test:
-  I have'nt tested access via openOCD yet. however, under src/client, is a simple
+  See [OpenOCD testing](src/openocd/README.md) and for standalone: under src/client, is a simple
   test application that I use as standalone verification (useful for waveform analysis)
 
   * make -C src TRACE=1 view

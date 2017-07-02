@@ -34,7 +34,7 @@ int main(int argc, char **argv, char **env)
 	// initialize simulation inputs
 	top->clk_i = 1;
 	top->enable_i = 1;
-	top->jtag_tdo_i = 1;
+	top->jtag_tdo_i = 0;
 	for (;;) {
 		i++;
 		// dump variables into VCD file and toggle clock
