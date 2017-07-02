@@ -1,0 +1,3 @@
+interface remote_bitbang
+remote_bitbang_port 9000
+remote_bitbang_host localhost
