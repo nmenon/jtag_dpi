@@ -183,9 +183,7 @@ module jtag_dpi_remote_bit_bang
 
   always @(negedge clk_i)
   begin
-    if (enable_i)
-    begin
-      if (read_tdo)
+    if (enable_i && read_tdo)
       begin
         read_tdo = 0;
         if (0 != jtag_server_send(jtag_tdo_i))
@@ -193,8 +191,7 @@ module jtag_dpi_remote_bit_bang
           $display("Error recieved from the JTAG DPI module while Tx.");
           $finish;
         end //server_send
-      end //read_tdo
-    end //enable_i
+    end //enable_i && read_tdo
   end //neg edge clk_i
 
 endmodule
