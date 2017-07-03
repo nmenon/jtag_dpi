@@ -113,7 +113,7 @@ static int client_recv(unsigned char *const jtag_tms,
 		       unsigned char *const bl_data_avail,
 		       unsigned char *const wr_data_avail,
 		       unsigned char *const rst_data_avail,
-		       const unsigned char jtag_tdo)
+		       unsigned char *const send_tdo)
 {
 	uint8_t dat;
 	int ret;
@@ -140,8 +140,8 @@ static int client_recv(unsigned char *const jtag_tms,
 		break;
 
 	case RB_READ_REQ:
-		dat = '0' + jtag_tdo;
-		send(jp_client_p, &dat, 1, 0);
+		DEBUG_PRINT("TX\n");
+		*send_tdo = 1;
 		break;
 
 	case RB_WRITE_0:
@@ -183,7 +183,6 @@ static int client_recv(unsigned char *const jtag_tms,
 		DEBUG_PRINT("Unknown request: '%c'\n", dat);
 		/* Fall through */
 	}
-
 	return 0;
 }
 
@@ -230,12 +229,13 @@ int jtag_server_tick(unsigned char *const jtag_tms,
 		     unsigned char *const wr_data_avail,
 		     unsigned char *const rst_data_avail,
 		     unsigned char *const jtag_client_on,
-		     const unsigned char jtag_tdo)
+		     unsigned char *const send_tdo)
 {
 
 	*rst_data_avail = 0;
 	*wr_data_avail = 0;
 	*bl_data_avail = 0;
+	*send_tdo = 0;
 	if (!jp_got_con) {
 		if (client_check_con()) {
 			*jtag_client_on = jp_got_con;
@@ -246,8 +246,19 @@ int jtag_server_tick(unsigned char *const jtag_tms,
 
 	return client_recv(jtag_tms, jtag_tck, jtag_trst, jtag_srst,
 			   jtag_tdi, jtag_blink, bl_data_avail,
-			   wr_data_avail, rst_data_avail, jtag_tdo);
+			   wr_data_avail, rst_data_avail, send_tdo);
 }
+
+int jtag_server_send(unsigned char const jtag_tdo)
+{
+	uint8_t dat;
+
+	dat = '0' + jtag_tdo;
+	DEBUG_PRINT("Read = '%c'\n", dat);
+	send(jp_client_p, &dat, 1, 0);
+	return 0;
+}
+
 
 #ifdef __cplusplus
 }
