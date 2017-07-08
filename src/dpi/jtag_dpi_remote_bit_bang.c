@@ -42,11 +42,14 @@ extern "C" {
 #define RB_RST_T    't'		/*      1       0           */
 #define RB_RST_U    'u'		/*      1       1           */
 
+#define MODULE_NAME "jtag_dpi_remote_bb: "
 #if TEST_FRAMEWORK
-#define DEBUG_PRINT printf
+#define DEBUG_PRINT(...) printf(MODULE_NAME "DEBUG: "  __VA_ARGS__)
 #else
-#define DEBUG_PRINT(ARGS...)
+#define DEBUG_PRINT(...)
 #endif
+#define INFO_PRINT(...) printf(MODULE_NAME "INFO: "  __VA_ARGS__)
+#define ERROR_PRINT(...) printf(MODULE_NAME "ERROR: "  __VA_ARGS__)
 
 static uint8_t jp_got_con;
 
@@ -70,25 +73,25 @@ static int server_socket_open()
 
 	jp_server_p = socket(PF_INET, SOCK_STREAM, 0);
 	if (jp_server_p < 0) {
-		DEBUG_PRINT("Unable to create comm socket: %s\n",
+		ERROR_PRINT("Unable to create comm socket: %s\n",
 			    strerror(errno));
 		return errno;
 	}
 
 	if (setsockopt(jp_server_p, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int))
 	    == -1) {
-		DEBUG_PRINT("Unable to setsockopt on the socket: %s\n",
+		ERROR_PRINT("Unable to setsockopt on the socket: %s\n",
 			    strerror(errno));
 		return -1;
 	}
 
 	if (bind(jp_server_p, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-		DEBUG_PRINT("Unable to bind the socket: %s\n", strerror(errno));
+		ERROR_PRINT("Unable to bind the socket: %s\n", strerror(errno));
 		return -1;
 	}
 
 	if (listen(jp_server_p, 1) == -1) {
-		DEBUG_PRINT("Unable to listen: %s\n", strerror(errno));
+		ERROR_PRINT("Unable to listen: %s\n", strerror(errno));
 		return -1;
 	}
 
@@ -96,7 +99,7 @@ static int server_socket_open()
 	ret |= O_NONBLOCK;
 	fcntl(jp_server_p, F_SETFL, ret);
 
-	DEBUG_PRINT("Listening on port %d\n", socket_port);
+	INFO_PRINT("Listening on port %d\n", socket_port);
 	return 0;
 }
 
@@ -118,7 +121,7 @@ static int client_recv(unsigned char *const jtag_tms,
 
 	// check connection abort
 	if ((ret == -1 && errno != EWOULDBLOCK) || (ret == 0)) {
-		DEBUG_PRINT("JTAG Connection closed\n");
+		ERROR_PRINT("JTAG Connection closed\n");
 		close(jp_client_p);
 		return server_socket_open();
 	}
