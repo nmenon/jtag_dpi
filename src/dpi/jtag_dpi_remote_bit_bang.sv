@@ -75,6 +75,14 @@ module jtag_dpi_remote_bit_bang
                                                output bit send_tdo);
   import "DPI-C" function int jtag_server_send(input  bit i_tdo);
 
+  logic     tdo_o;
+  logic     tms_o;
+  logic     tck_o;
+  logic     trst_o;
+  logic     srst_o;
+  logic     tdi_o;
+  logic     blink;
+
   wire      read_tdo;
   reg       rx_jtag_tms;
   reg       rx_jtag_tck;
@@ -105,13 +113,13 @@ module jtag_dpi_remote_bit_bang
     rx_jtag_tdi = 0;
     rx_jtag_blink = 0;
     tx_read_tdo = 0;
-    jtag_tms_o = 0;
-    jtag_tck_o = 0;
-    jtag_trst_o = 0;
-    jtag_srst_o = 0;
-    jtag_tdi_o = 0;
-    blink_o = 0;
-    read_tdo = 0;
+    tms_o = 0;
+    tck_o = 0;
+    trst_o = 0;
+    srst_o = 0;
+    tdi_o = 0;
+    blink = 0;
+    tdo_o = 0;
 
     if (0 != jtag_server_init(TCP_PORT))
     begin
@@ -142,7 +150,7 @@ module jtag_dpi_remote_bit_bang
 
         if (rx_jtag_new_b_data_available)
         begin
-         blink_o  <= rx_jtag_blink;
+         blink  <= rx_jtag_blink;
          /*
          $display( "BL: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d. SRST: %0d Blink:%0d [%0d %0d %0d] [%0d %0d] [%0d]",
                     rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst, rx_jtag_srst, rx_jtag_blink,
@@ -152,9 +160,9 @@ module jtag_dpi_remote_bit_bang
 
         if (rx_jtag_new_wr_data_available)
         begin
-         jtag_tms_o  <= rx_jtag_tms;
-         jtag_tck_o  <= rx_jtag_tck;
-         jtag_tdi_o  <= rx_jtag_tdi;
+         tms_o  <= rx_jtag_tms;
+         tck_o  <= rx_jtag_tck;
+         tdi_o  <= rx_jtag_tdi;
          /*
          $display( "WR: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d. SRST: %0d Blink:%0d [%0d %0d %0d] [%0d %0d] [%0d]",
                     rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst, rx_jtag_srst, rx_jtag_blink,
@@ -164,8 +172,8 @@ module jtag_dpi_remote_bit_bang
 
         if (rx_jtag_new_rst_data_available)
         begin
-          jtag_trst_o  <= rx_jtag_trst;
-          jtag_srst_o  <= rx_jtag_srst;
+          trst_o  <= rx_jtag_trst;
+          srst_o  <= rx_jtag_srst;
           /*
           $display( "RST: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d. SRST: %0d Blink:%0d [%0d %0d %0d] [%0d %0d] [%0d]",
                     rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst, rx_jtag_srst, rx_jtag_blink,
@@ -175,8 +183,8 @@ module jtag_dpi_remote_bit_bang
 
         if (tx_read_tdo)
         begin
-          read_tdo = 1;
-        end // tx_read_tdo == 0
+          tdo_o = 1;
+        end // tx_read_tdo
 
     end //enable_i
   end // posedge clk_i
@@ -185,7 +193,7 @@ module jtag_dpi_remote_bit_bang
   begin
     if (enable_i && read_tdo)
       begin
-        read_tdo = 0;
+        tdo_o = 0;
         if (0 != jtag_server_send(jtag_tdo_i))
         begin
           $display("Error recieved from the JTAG DPI module while Tx.");
@@ -193,6 +201,14 @@ module jtag_dpi_remote_bit_bang
         end //server_send
     end //enable_i && read_tdo
   end //neg edge clk_i
+
+assign jtag_tms_o = tms_o;
+assign jtag_tck_o = tck_o;
+assign jtag_trst_o = trst_o;
+assign jtag_srst_o = srst_o;
+assign jtag_tdi_o = tdi_o;
+assign blink_o = blink;
+assign read_tdo = tdo_o;
 
 endmodule
 // vim: set ai ts=2 sw=2 et:
