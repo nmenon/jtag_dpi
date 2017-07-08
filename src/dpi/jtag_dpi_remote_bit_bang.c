@@ -15,8 +15,8 @@ extern "C" {
 #endif
 
 /*XXX: Define TEST_FRAMEWORK as 0 */
-#ifndef TEST_FRAMEWORK
-#define TEST_FRAMEWORK 1
+#ifndef JTAG_BB_TEST_FRAMEWORK
+#define JTAG_BB_TEST_FRAMEWORK 1
 #endif
 
 /*
@@ -43,7 +43,7 @@ extern "C" {
 #define RB_RST_U    'u'		/*      1       1           */
 
 #define MODULE_NAME "jtag_dpi_remote_bb: "
-#if TEST_FRAMEWORK
+#if JTAG_BB_TEST_FRAMEWORK
 #define DEBUG_PRINT(...) printf(MODULE_NAME "DEBUG: "  __VA_ARGS__)
 #else
 #define DEBUG_PRINT(...)
