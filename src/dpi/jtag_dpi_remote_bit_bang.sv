@@ -128,13 +128,13 @@ module jtag_dpi_remote_bit_bang
     end
     $display("port=%d", TCP_PORT);
 
-	end
+  end
 
-	// On clk input, check if we are enabled first
+  // On clk input, check if we are enabled first
   always @(posedge clk_i)
   begin
-		if (enable_i)
-		begin
+    if (enable_i)
+    begin
         if ( 0 != jtag_server_tick(rx_jtag_tms, rx_jtag_tck,
                                    rx_jtag_trst, rx_jtag_srst,
                                    rx_jtag_tdi, rx_jtag_blink,
@@ -151,11 +151,6 @@ module jtag_dpi_remote_bit_bang
         if (rx_jtag_new_b_data_available)
         begin
          blink  <= rx_jtag_blink;
-         /*
-         $display( "BL: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d. SRST: %0d Blink:%0d [%0d %0d %0d] [%0d %0d] [%0d]",
-                    rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst, rx_jtag_srst, rx_jtag_blink,
-                    jtag_tck_o, jtag_tms_o, jtag_tdi_o, jtag_trst_o, jtag_srst_o, blink_o);
-          */
         end //rx_jtag_new_b_data_available
 
         if (rx_jtag_new_wr_data_available)
@@ -163,22 +158,12 @@ module jtag_dpi_remote_bit_bang
          tms_o  <= rx_jtag_tms;
          tck_o  <= rx_jtag_tck;
          tdi_o  <= rx_jtag_tdi;
-         /*
-         $display( "WR: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d. SRST: %0d Blink:%0d [%0d %0d %0d] [%0d %0d] [%0d]",
-                    rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst, rx_jtag_srst, rx_jtag_blink,
-                    jtag_tck_o, jtag_tms_o, jtag_tdi_o, jtag_trst_o, jtag_srst_o, blink_o);
-          */
         end //rx_jtag_new_wr_data_available
 
         if (rx_jtag_new_rst_data_available)
         begin
           trst_o  <= rx_jtag_trst;
           srst_o  <= rx_jtag_srst;
-          /*
-          $display( "RST: TCK: %0d, TMS: %0d, TDI: %0d, TRST: %0d. SRST: %0d Blink:%0d [%0d %0d %0d] [%0d %0d] [%0d]",
-                    rx_jtag_tck, rx_jtag_tms, rx_jtag_tdi, rx_jtag_trst, rx_jtag_srst, rx_jtag_blink,
-                    jtag_tck_o, jtag_tms_o, jtag_tdi_o, jtag_trst_o, jtag_srst_o, blink_o);
-          */
         end //rx_jtag_new_rst_data_available
 
         if (tx_read_tdo)
