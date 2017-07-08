@@ -45,7 +45,7 @@
 
 module jtag_dpi_remote_bit_bang
 #(
-  parameter TCP_PORT      = 9000 // XXX: we must get rid of static assignment
+  parameter TCP_PORT      = 9000
 )
 (
   input     clk_i,
@@ -83,7 +83,9 @@ module jtag_dpi_remote_bit_bang
   logic     srst_o;
   logic     tdi_o;
   logic     blink;
+
   logic     server_ready;
+  reg [15:0] server_port;
 
   wire      read_tdo;
   reg       rx_jtag_tms;
@@ -123,6 +125,7 @@ module jtag_dpi_remote_bit_bang
     blink = 0;
     tdo_o = 0;
     server_ready = 0;
+    server_port = TCP_PORT;
   end
 
   // On clk input, check if we are enabled first
@@ -171,13 +174,13 @@ module jtag_dpi_remote_bit_bang
     // Start the jtag server on assertion of enable
     if (enable_i && server_ready == 0)
     begin
-      if (0 != jtag_server_init(TCP_PORT))
+      if (0 != jtag_server_init(server_port))
       begin
         $display("Error initiazing port");
         $finish;
       end // server init
       server_ready <= 1;
-      $display("JTAG Bitbang port=%d: Open", TCP_PORT);
+      $display("JTAG Bitbang port=%d: Open", server_port);
     end //enable_i && !server_ready
 
     // Stop the server on deassertion of enable
@@ -185,7 +188,7 @@ module jtag_dpi_remote_bit_bang
     begin
       server_ready <= 0;
       jtag_server_deinit();
-      $display("JTAG Bitbang port=%d: Closed", TCP_PORT);
+      $display("JTAG Bitbang port=%d: Closed", server_port);
     end //server_ready && !enable_i
 
   end // posedge clk_i
