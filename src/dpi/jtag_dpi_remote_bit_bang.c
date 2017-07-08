@@ -48,9 +48,7 @@ extern "C" {
 #define DEBUG_PRINT(ARGS...)
 #endif
 
-uint8_t jp_waiting;
-uint8_t count_comp;
-uint8_t jp_got_con;
+static uint8_t jp_got_con;
 
 static int jp_server_p;		// The listening socket
 static int jp_client_p;		// The socket for communicating with Remote
@@ -63,8 +61,6 @@ static int server_socket_open()
 	int ret;
 	int yes = 1;
 
-	count_comp = 0;
-	jp_waiting = 0;
 	jp_got_con = 0;
 
 	addr.sin_family = AF_INET;
