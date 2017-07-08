@@ -219,6 +219,14 @@ int jtag_server_init(const int port)
 	return server_socket_open();
 }
 
+void jtag_server_deinit(void)
+{
+	close(jp_server_p);
+	close(jp_client_p);
+	jp_got_con = 0;
+}
+
+
 int jtag_server_tick(unsigned char *const jtag_tms,
 		     unsigned char *const jtag_tck,
 		     unsigned char *const jtag_trst,

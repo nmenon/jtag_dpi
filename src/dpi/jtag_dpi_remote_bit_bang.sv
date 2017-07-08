@@ -62,6 +62,7 @@ module jtag_dpi_remote_bit_bang
   );
 
   import "DPI-C" function int jtag_server_init(input int port);
+  import "DPI-C" function void jtag_server_deinit();
   import "DPI-C" function int jtag_server_tick(output bit s_tms,
                                                output bit s_tck,
                                                output bit s_trst,
@@ -82,6 +83,7 @@ module jtag_dpi_remote_bit_bang
   logic     srst_o;
   logic     tdi_o;
   logic     blink;
+  logic     server_ready;
 
   wire      read_tdo;
   reg       rx_jtag_tms;
@@ -120,20 +122,13 @@ module jtag_dpi_remote_bit_bang
     tdi_o = 0;
     blink = 0;
     tdo_o = 0;
-
-    if (0 != jtag_server_init(TCP_PORT))
-    begin
-      $display("Error initiazing port");
-      $finish;
-    end
-    $display("port=%d", TCP_PORT);
-
+    server_ready = 0;
   end
 
   // On clk input, check if we are enabled first
   always @(posedge clk_i)
   begin
-    if (enable_i)
+    if (enable_i && server_ready)
     begin
         if ( 0 != jtag_server_tick(rx_jtag_tms, rx_jtag_tck,
                                    rx_jtag_trst, rx_jtag_srst,
@@ -171,12 +166,33 @@ module jtag_dpi_remote_bit_bang
           tdo_o = 1;
         end // tx_read_tdo
 
-    end //enable_i
+    end //enable_i && server_ready
+
+    // Start the jtag server on assertion of enable
+    if (enable_i && server_ready == 0)
+    begin
+      if (0 != jtag_server_init(TCP_PORT))
+      begin
+        $display("Error initiazing port");
+        $finish;
+      end // server init
+      server_ready <= 1;
+      $display("JTAG Bitbang port=%d: Open", TCP_PORT);
+    end //enable_i && !server_ready
+
+    // Stop the server on deassertion of enable
+    if (server_ready && enable_i == 0)
+    begin
+      server_ready <= 0;
+      jtag_server_deinit();
+      $display("JTAG Bitbang port=%d: Closed", TCP_PORT);
+    end //server_ready && !enable_i
+
   end // posedge clk_i
 
   always @(negedge clk_i)
   begin
-    if (enable_i && read_tdo)
+    if (enable_i && server_ready && read_tdo)
       begin
         tdo_o = 0;
         if (0 != jtag_server_send(jtag_tdo_i))
