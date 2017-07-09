@@ -10,9 +10,11 @@
 #include <fcntl.h>
 #include <string.h>
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 extern "C" {
 #endif
+/* *INDENT-ON* */
 
 /*XXX: Define TEST_FRAMEWORK as 0 */
 #ifndef JTAG_BB_TEST_FRAMEWORK
@@ -225,7 +227,6 @@ void jtag_server_deinit(void)
 	jp_got_con = 0;
 }
 
-
 int jtag_server_tick(unsigned char *const jtag_tms,
 		     unsigned char *const jtag_tck,
 		     unsigned char *const jtag_trst,
@@ -267,8 +268,10 @@ int jtag_server_send(unsigned char const jtag_tdo)
 }
 
 
+/* *INDENT-OFF* */
 #ifdef __cplusplus
 }
 #endif
+/* *INDENT-ON* */
 
 /* vim: set ai: ts=8 sw=8 noet: */
