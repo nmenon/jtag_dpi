@@ -1,5 +1,5 @@
-////   Copyright (C) 2017 Texas Instruments Incorporated - http://www.ti.com/ ////
-////   Nishanth Menon                                             ////
+//   Copyright (C) 2017 Texas Instruments Incorporated - http://www.ti.com/
+//   Nishanth Menon
 
 #include <unistd.h>
 #include <stdio.h>
@@ -55,11 +55,16 @@ extern "C" {
 
 static uint8_t jp_got_con;
 
-static int jp_server_p;		// The listening socket
-static int jp_client_p;		// The socket for communicating with Remote
+static int jp_server_p;		/* The listening socket */
+static int jp_client_p;		/* The socket for communicating with Remote */
 
 static int socket_port;
 
+/**
+ * server_socket_open() - Helper function to open a server socket.
+ *
+ * Return: 0 if all goes good, else corresponding error
+ */
 static int server_socket_open()
 {
 	struct sockaddr_in addr;
@@ -105,6 +110,21 @@ static int server_socket_open()
 	return 0;
 }
 
+/**
+ * client_recv() - Actual processing of rx data from remote bitbang client
+ * @jtag_tms:	comm data with verilog
+ * @jtag_tck:	comm data with verilog
+ * @jtag_trst:	comm data with verilog
+ * @jtag_srst:	comm data with verilog
+ * @jtag_tdi:	comm data with verilog
+ * @jtag_blink:	comm data with verilog
+ * @bl_data_avail:	comm data with verilog
+ * @wr_data_avail:	comm data with verilog
+ * @rst_data_avail:	comm data with verilog
+ * @send_tdo:	comm data with verilog
+ *
+ * Return: 0 if all goes good, else corresponding error
+ */
 static int client_recv(unsigned char *const jtag_tms,
 		       unsigned char *const jtag_tck,
 		       unsigned char *const jtag_trst,
@@ -121,13 +141,13 @@ static int client_recv(unsigned char *const jtag_tms,
 
 	ret = recv(jp_client_p, &dat, 1, 0);
 
-	// check connection abort
+	/* Check connection abort */
 	if ((ret == -1 && errno != EWOULDBLOCK) || (ret == 0)) {
 		ERROR_PRINT("JTAG Connection closed\n");
 		close(jp_client_p);
 		return server_socket_open();
 	}
-	// no available data
+	/* no available data */
 	if (ret == -1 && errno == EWOULDBLOCK) {
 		return 0;
 	}
@@ -187,7 +207,11 @@ static int client_recv(unsigned char *const jtag_tms,
 	return 0;
 }
 
-// Checks to see if we got a connection
+/**
+ * client_check_con() - Checks to see if we got a connection
+ *
+ * Return: 0 if all goes good, else corresponding error
+ */
 static int client_check_con()
 {
 	int ret;
@@ -200,12 +224,14 @@ static int client_check_con()
 			    strerror(errno));
 		return 1;
 	}
-	// Set the comm socket to non-blocking.
+	/* Set the comm socket to non-blocking. */
 	ret = fcntl(jp_client_p, F_GETFL);
 	ret |= O_NONBLOCK;
 	fcntl(jp_client_p, F_SETFL, ret);
-	// Close the server socket, so that the port can be taken again
-	// if the simulator is reset.
+	/*
+	 * Close the server socket, so that the port can be taken again
+	 * if the simulator is reset.
+	 */
 	close(jp_server_p);
 
 	DEBUG_PRINT("JTAG communication connected!\n");
@@ -213,6 +239,12 @@ static int client_check_con()
 	return 0;
 }
 
+/**
+ * jtag_server_init() - Called during enable to startup a server port
+ * @port:	Network port number
+ *
+ * Return: 0 if all goes good, else corresponding error
+ */
 int jtag_server_init(const int port)
 {
 	socket_port = port;
@@ -220,6 +252,10 @@ int jtag_server_init(const int port)
 	return server_socket_open();
 }
 
+/**
+ * jtag_server_deinit() - Shutdown the network server
+ *
+ */
 void jtag_server_deinit(void)
 {
 	close(jp_server_p);
@@ -227,6 +263,21 @@ void jtag_server_deinit(void)
 	jp_got_con = 0;
 }
 
+/**
+ * jtag_server_tick() - Called for every clock cycle if server is enabled.
+ * @jtag_tms:	comm data with verilog
+ * @jtag_tck:	comm data with verilog
+ * @jtag_trst:	comm data with verilog
+ * @jtag_srst:	comm data with verilog
+ * @jtag_tdi:	comm data with verilog
+ * @jtag_blink:	comm data with verilog
+ * @bl_data_avail:	comm data with verilog
+ * @wr_data_avail:	comm data with verilog
+ * @rst_data_avail:	comm data with verilog
+ * @send_tdo:	comm data with verilog
+ *
+ * Return: 0 if all goes good, else corresponding error
+ */
 int jtag_server_tick(unsigned char *const jtag_tms,
 		     unsigned char *const jtag_tck,
 		     unsigned char *const jtag_trst,
@@ -257,6 +308,15 @@ int jtag_server_tick(unsigned char *const jtag_tms,
 			   wr_data_avail, rst_data_avail, send_tdo);
 }
 
+/**
+ * jtag_server_send() - Called if data has to be transmitted to remote client
+ * @jtag_tdo:	TDO data
+ *
+ * NOTE: This assumes that it was invoked as response to send_tdo being set
+ * in tick function.
+ *
+ * Return: 0 if all goes good, else corresponding error
+ */
 int jtag_server_send(unsigned char const jtag_tdo)
 {
 	uint8_t dat;
