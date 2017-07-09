@@ -56,7 +56,7 @@ static uint8_t jp_got_con;
 static int jp_server_p;		// The listening socket
 static int jp_client_p;		// The socket for communicating with Remote
 
-int socket_port;
+static int socket_port;
 
 static int server_socket_open()
 {
