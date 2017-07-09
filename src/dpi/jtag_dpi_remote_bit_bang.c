@@ -204,7 +204,7 @@ static int client_recv(unsigned char *const jtag_tms,
 		break;
 
 	case RB_QUIT_REQ:
-#if TEST_FRAMEWORK
+#if JTAG_BB_TEST_FRAMEWORK
 		/* Shut down sim */
 		return 1;
 #else
