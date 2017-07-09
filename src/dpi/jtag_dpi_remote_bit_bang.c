@@ -53,12 +53,23 @@ extern "C" {
 #define INFO_PRINT(...) printf(MODULE_NAME "INFO: "  __VA_ARGS__)
 #define ERROR_PRINT(...) printf(MODULE_NAME "ERROR: "  __VA_ARGS__)
 
-static uint8_t jp_got_con;
+/**
+ * struct server_info - Maintains the server params
+ * @jp_got_con:		Are we connected?
+ * @jp_server_p:	The listening socket
+ * @jp_client_p:	The socket for communicating with remote
+ * @socket_port:	What port to hook server to?
+ */
+struct server_info {
+	uint8_t jp_got_con;
+	int jp_server_p;	/* The listening socket */
+	int jp_client_p;	/* The socket for communicating with Remote */
 
-static int jp_server_p;		/* The listening socket */
-static int jp_client_p;		/* The socket for communicating with Remote */
+	int socket_port;
+};
 
-static int socket_port;
+/* Server information instance */
+static struct server_info si;
 
 /**
  * server_socket_open() - Helper function to open a server socket.
@@ -71,42 +82,42 @@ static int server_socket_open()
 	int ret;
 	int yes = 1;
 
-	jp_got_con = 0;
+	si.jp_got_con = 0;
 
 	addr.sin_family = AF_INET;
-	addr.sin_port = htons(socket_port);
+	addr.sin_port = htons(si.socket_port);
 	addr.sin_addr.s_addr = INADDR_ANY;
 	memset(addr.sin_zero, '\0', sizeof(addr.sin_zero));
 
-	jp_server_p = socket(PF_INET, SOCK_STREAM, 0);
-	if (jp_server_p < 0) {
+	si.jp_server_p = socket(PF_INET, SOCK_STREAM, 0);
+	if (si.jp_server_p < 0) {
 		ERROR_PRINT("Unable to create comm socket: %s\n",
 			    strerror(errno));
 		return errno;
 	}
 
-	if (setsockopt(jp_server_p, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int))
-	    == -1) {
+	if (setsockopt(si.jp_server_p, SOL_SOCKET, SO_REUSEADDR,
+		       &yes, sizeof(int)) == -1) {
 		ERROR_PRINT("Unable to setsockopt on the socket: %s\n",
 			    strerror(errno));
 		return -1;
 	}
 
-	if (bind(jp_server_p, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+	if (bind(si.jp_server_p, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
 		ERROR_PRINT("Unable to bind the socket: %s\n", strerror(errno));
 		return -1;
 	}
 
-	if (listen(jp_server_p, 1) == -1) {
+	if (listen(si.jp_server_p, 1) == -1) {
 		ERROR_PRINT("Unable to listen: %s\n", strerror(errno));
 		return -1;
 	}
 
-	ret = fcntl(jp_server_p, F_GETFL);
+	ret = fcntl(si.jp_server_p, F_GETFL);
 	ret |= O_NONBLOCK;
-	fcntl(jp_server_p, F_SETFL, ret);
+	fcntl(si.jp_server_p, F_SETFL, ret);
 
-	INFO_PRINT("Listening on port %d\n", socket_port);
+	INFO_PRINT("Listening on port %d\n", si.socket_port);
 	return 0;
 }
 
@@ -139,12 +150,12 @@ static int client_recv(unsigned char *const jtag_tms,
 	uint8_t dat;
 	int ret;
 
-	ret = recv(jp_client_p, &dat, 1, 0);
+	ret = recv(si.jp_client_p, &dat, 1, 0);
 
 	/* Check connection abort */
 	if ((ret == -1 && errno != EWOULDBLOCK) || (ret == 0)) {
 		ERROR_PRINT("JTAG Connection closed\n");
-		close(jp_client_p);
+		close(si.jp_client_p);
 		return server_socket_open();
 	}
 	/* no available data */
@@ -197,7 +208,7 @@ static int client_recv(unsigned char *const jtag_tms,
 		/* Shut down sim */
 		return 1;
 #else
-		close(jp_client_p);
+		close(si.jp_client_p);
 		return server_socket_open();
 #endif
 	default:
@@ -216,7 +227,7 @@ static int client_check_con()
 {
 	int ret;
 
-	if ((jp_client_p = accept(jp_server_p, NULL, NULL)) == -1) {
+	if ((si.jp_client_p = accept(si.jp_server_p, NULL, NULL)) == -1) {
 		if (errno == EAGAIN)
 			return 1;
 
@@ -225,17 +236,17 @@ static int client_check_con()
 		return 1;
 	}
 	/* Set the comm socket to non-blocking. */
-	ret = fcntl(jp_client_p, F_GETFL);
+	ret = fcntl(si.jp_client_p, F_GETFL);
 	ret |= O_NONBLOCK;
-	fcntl(jp_client_p, F_SETFL, ret);
+	fcntl(si.jp_client_p, F_SETFL, ret);
 	/*
 	 * Close the server socket, so that the port can be taken again
 	 * if the simulator is reset.
 	 */
-	close(jp_server_p);
+	close(si.jp_server_p);
 
 	DEBUG_PRINT("JTAG communication connected!\n");
-	jp_got_con = 1;
+	si.jp_got_con = 1;
 	return 0;
 }
 
@@ -247,7 +258,7 @@ static int client_check_con()
  */
 int jtag_server_init(const int port)
 {
-	socket_port = port;
+	si.socket_port = port;
 
 	return server_socket_open();
 }
@@ -258,9 +269,9 @@ int jtag_server_init(const int port)
  */
 void jtag_server_deinit(void)
 {
-	close(jp_server_p);
-	close(jp_client_p);
-	jp_got_con = 0;
+	close(si.jp_server_p);
+	close(si.jp_client_p);
+	si.jp_got_con = 0;
 }
 
 /**
@@ -295,13 +306,13 @@ int jtag_server_tick(unsigned char *const jtag_tms,
 	*wr_data_avail = 0;
 	*bl_data_avail = 0;
 	*send_tdo = 0;
-	if (!jp_got_con) {
+	if (!si.jp_got_con) {
 		if (client_check_con()) {
-			*jtag_client_on = jp_got_con;
+			*jtag_client_on = si.jp_got_con;
 			return 0;
 		}
 	}
-	*jtag_client_on = jp_got_con;
+	*jtag_client_on = si.jp_got_con;
 
 	return client_recv(jtag_tms, jtag_tck, jtag_trst, jtag_srst,
 			   jtag_tdi, jtag_blink, bl_data_avail,
@@ -323,7 +334,7 @@ int jtag_server_send(unsigned char const jtag_tdo)
 
 	dat = '0' + jtag_tdo;
 	DEBUG_PRINT("Read = '%c'\n", dat);
-	send(jp_client_p, &dat, 1, 0);
+	send(si.jp_client_p, &dat, 1, 0);
 	return 0;
 }
 
