@@ -53,6 +53,33 @@ extern "C" {
 #define INFO_PRINT(...) printf(MODULE_NAME "INFO: "  __VA_ARGS__)
 #define ERROR_PRINT(...) printf(MODULE_NAME "ERROR: "  __VA_ARGS__)
 
+#define ABSOLUTE_MAX_THRESHOLDS 4
+
+#ifndef BB_JTAG_INACTIVITY_MAX_THRESHOLDS
+#define BB_JTAG_INACTIVITY_MAX_THRESHOLDS ABSOLUTE_MAX_THRESHOLDS
+#else
+#if BB_JTAG_INACTIVITY_MAX_THRESHOLDS > ABSOLUTE_MAX_THRESHOLDS
+#error "Max thresholds exceeded"
+#endif /* Max thresh check */
+#endif /* BB_JTAG_INACTIVITY_MAX_THRESHOLDS */
+
+/**
+ * struct inactivity_info - Inactivity information
+ * @current_tidx:	current threshold
+ * @max_tidx:		Maximum thresholds
+ * @num_inactive_ticks:	Number of inactive ticks so far
+ * @threshold:		Array containing for each state, a residency
+ *			latency after which a network check will be performed.
+ *			idx[0] indicates steady state, others are incrementally
+ *			slower polling of network status.
+ */
+struct inactivity_info {
+	uint8_t current_tidx;
+	uint8_t max_tidx;
+	uint16_t num_inactive_ticks;
+	uint16_t threshold[BB_JTAG_INACTIVITY_MAX_THRESHOLDS];
+};
+
 /**
  * struct server_info - Maintains the server params
  * @jp_got_con:		Are we connected?
@@ -66,10 +93,105 @@ struct server_info {
 	int jp_client_p;	/* The socket for communicating with Remote */
 
 	int socket_port;
+
 };
 
 /* Server information instance */
 static struct server_info si;
+
+/* Inactivity information */
+static struct inactivity_info ii;
+
+/**
+ * server_tick_activity_init() - Initialize basic struct info
+ */
+static void server_tick_activity_init(void)
+{
+	ii.current_tidx = 0;
+	ii.num_inactive_ticks = 0;
+	ii.max_tidx = BB_JTAG_INACTIVITY_MAX_THRESHOLDS - 1;
+#ifndef BB_JTAG_INACTIVITY_THRESH1
+	ii.threshold[0] = 10;
+#else
+	ii.threshold[0] = BB_JTAG_INACTIVITY_THRESH1;
+#endif
+#if BB_JTAG_INACTIVITY_MAX_THRESHOLDS > 1
+#ifndef BB_JTAG_INACTIVITY_THRESH2
+	ii.threshold[1] = 100;
+#else
+	ii.threshold[1] = BB_JTAG_INACTIVITY_THRESH2;
+#endif
+#endif
+#if BB_JTAG_INACTIVITY_MAX_THRESHOLDS > 2
+#ifndef BB_JTAG_INACTIVITY_THRESH3
+	ii.threshold[2] = 500;
+#else
+	ii.threshold[2] = BB_JTAG_INACTIVITY_THRESH3;
+#endif
+#endif
+#if BB_JTAG_INACTIVITY_MAX_THRESHOLDS > 3
+#ifndef BB_JTAG_INACTIVITY_THRESH4
+	ii.threshold[3] = 1000;
+#else
+	ii.threshold[3] = BB_JTAG_INACTIVITY_THRESH4;
+#endif
+#endif
+}
+
+/**
+ * server_tick_mark_active() - Mark myself active
+ *
+ * In active state, we will check for data every clk cycle.
+ * but if the next clk cycle has no data, then, we check
+ * based on threshold, and delay between checks increase till
+ * the delays reach max threshold.
+ */
+static void server_tick_mark_active(void)
+{
+	ii.current_tidx = 0;
+	/* Next tick will be an network op */
+	ii.num_inactive_ticks = 0;
+
+	DEBUG_PRINT("Detected network activity..\n");
+}
+
+/**
+ * server_tick_is_idle() - Is this an cycle where no network ops todo?
+ *
+ * This is the core logic of activity management. we will do two things here:
+ * a) if we are marked active (inactive_ticks = 0) then we need to do network
+ *    operations - this is necessary to maintain some performance.
+ * b) if we have been idle enough, do a simple ladder governor logic to
+ *    check even later.
+ *
+ * NOTE: we dont do a "residency" state, we are more interested in either:
+ *  i) lots of activity
+ *  ii) or the other extreme of lots of inactivity.
+ *
+ * Return: 0 if we are idle cycle, else if we have to do network op,
+ * return 1
+ */
+static int server_tick_is_idle(void)
+{
+	int ret = 0;
+
+	/* Trigger a network op please */
+	if (!ii.num_inactive_ticks)
+		ret = 1;
+
+	ii.num_inactive_ticks++;
+	if (ii.num_inactive_ticks > ii.threshold[ii.current_tidx]) {
+		/* Crossed threshold, Next tick will be an network op */
+		ii.num_inactive_ticks = 0;
+		if (ii.current_tidx < ii.max_tidx) {
+			ii.current_tidx++;
+			DEBUG_PRINT("Switched to INA state[%d]- check @%d\n",
+				    ii.current_tidx,
+				    ii.threshold[ii.current_tidx]);
+		}
+	}
+	return ret;
+}
 
 /**
  * server_socket_open() - Helper function to open a server socket.
@@ -162,6 +284,7 @@ static int client_recv(unsigned char *const jtag_tms,
 	if (ret == -1 && errno == EWOULDBLOCK) {
 		return 0;
 	}
+	server_tick_mark_active();
 
 	DEBUG_PRINT("Data: %c\n", dat);
 	switch (dat) {
@@ -260,6 +383,9 @@ int jtag_server_init(const int port)
 {
 	si.socket_port = port;
 
+	/* Check if we get data in next tick as well */
+	server_tick_activity_init();
+
 	return server_socket_open();
 }
 
@@ -306,11 +432,17 @@ int jtag_server_tick(unsigned char *const jtag_tms,
 	*wr_data_avail = 0;
 	*bl_data_avail = 0;
 	*send_tdo = 0;
+
+	/* If I have nothing to do in this tick, then return */
+	if (!server_tick_is_idle())
+		return 0;
+
 	if (!si.jp_got_con) {
 		if (client_check_con()) {
 			*jtag_client_on = si.jp_got_con;
 			return 0;
 		}
+		server_tick_mark_active();
 	}
 	*jtag_client_on = si.jp_got_con;
 
